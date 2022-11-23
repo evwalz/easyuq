@@ -189,9 +189,11 @@ def optimize_paras(idr_preds_validation, y_validation, y_train):
         if ll_deg2 < ll_deg1:
             h = h_rule
             ll = llscore(idr_preds_validation, y_validation, h =h_rule, df = None)
+            flag = 2
         else:
             h, ll = optimize_ll2(idr_preds_validation, y_validation, df=None, tol = tol)
-        return ll, h, df
+            flag = 1
+        return ll, h, df, flag
     
     else:
         hs, lls = [], []
@@ -206,7 +208,8 @@ def optimize_paras(idr_preds_validation, y_validation, y_train):
         ll_min = lls[ll_ix]
         h_min = hs[ll_ix]
         df_min = dfs[ll_ix]
-        return ll_min, h_min, df_min
+        flag = 0
+        return ll_min, h_min, df_min, flag
 
 
 

@@ -46,6 +46,7 @@ _RESULTS_TEST_REG = "./UCI_Datasets/" + data_directory + "/results/test_reg_" + 
 _RESULTS_TEST_BATCH = "./UCI_Datasets/" + data_directory + "/results/test_batch_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_H = "./UCI_Datasets/" + data_directory + "/results/test_bw_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_DF = "./UCI_Datasets/" + data_directory + "/results/test_df_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
+_RESULTS_TEST_FLAG = "./UCI_Datasets/" + data_directory + "/results/test_flag_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_LOG = "./UCI_Datasets/" + data_directory + "/results/log_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 
 
@@ -81,6 +82,9 @@ call(["rm", _RESULTS_TEST_CRPSS])
 call(["rm", _RESULTS_TEST_CRPSIDR])
 call(["rm", _RESULTS_TEST_BATCH])
 call(["rm", _RESULTS_TEST_REG])
+call(["rm", _RESULTS_TEST_H])
+call(["rm", _RESULTS_TEST_DF])
+call(["rm", _RESULTS_TEST_FLAG])
 call(["rm", _RESULTS_TEST_LOG])
 print ("Result files removed.")
 
@@ -156,6 +160,7 @@ for split in range(int(n_splits)):
     best_batch = 32
     best_h = 1
     best_free_degree = 2
+    test_flag = 0
     
     for bs in batch_vals:
         for reg in reg_values:
@@ -165,7 +170,7 @@ for split in range(int(n_splits)):
             rmse, idr_preds_validation, crps_idr = network.predictIDR(X_validation.copy(), X_train.copy(),
                                                                   y_validation.copy(), y_train.copy())
 
-            fitted_ll, fitted_h, fitted_df = optimize_paras(idr_preds_validation, y_validation, y_train)
+            fitted_ll, fitted_h, fitted_df, flag = optimize_paras(idr_preds_validation, y_validation, y_train)
             
             if (fitted_ll < best_ll):
                 best_ll = fitted_ll
@@ -174,7 +179,7 @@ for split in range(int(n_splits)):
                 best_batch = bs
                 best_free_degree = fitted_df
                 best_h = fitted_h
-            
+                test_flag = flag
 
     # Storing test results
     best_network = net_easyuq.net(X_train_original, y_train_original, ([int(n_hidden)] * num_hidden_layers),
@@ -208,6 +213,9 @@ for split in range(int(n_splits)):
 
     with open(_RESULTS_TEST_DF, "a") as myfile:
         myfile.write(repr(best_free_degree) + '\n')
+
+    with open(_RESULTS_TEST_FLAG, "a") as myfile:
+        myfile.write(repr(test_flag) + '\n')
         
     print ("Tests on split " + str(split) + " complete.")
     crps_scdf += [crps_test]
