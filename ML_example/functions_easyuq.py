@@ -4,6 +4,7 @@ Created on Wed Oct 19 06:29:11 2022
 
 @author: walz
 """
+import numpy as np
 from scipy import stats
 from scipy.optimize import minimize_scalar
 from statsmodels.nonparametric.bandwidths import bw_silverman

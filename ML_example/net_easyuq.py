@@ -6,7 +6,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import math
-from scipy.misc import logsumexp
 import numpy as np
 
 from keras.regularizers import l2
@@ -20,6 +19,7 @@ import time
 import isodisreg
 from isodisreg import idr
 import pandas as pd
+
 
 
 class net:
@@ -73,19 +73,18 @@ class net:
 
 
         inputs = Input(shape=(X_train.shape[1],))
-        inter = Dense(n_hidden[0], activation='relu', W_regularizer=l2(reg))(inter)
+        inter = Dense(n_hidden[0], activation='relu', kernel_regularizer=l2(reg))(inputs)
         for i in range(len(n_hidden) - 1):
-            inter = Dense(n_hidden[i+1], activation='relu', W_regularizer=l2(reg))(inter)
-        outputs = Dense(y_train_normalized.shape[1], W_regularizer=l2(reg))(inter)
+            inter = Dense(n_hidden[i+1], activation='relu', kernel_regularizer=l2(reg))(inter)
+        outputs = Dense(y_train_normalized.shape[1], kernel_regularizer=l2(reg))(inter)
         model = Model(inputs, outputs)
 
         model.compile(loss='mean_squared_error', optimizer='adam')
 
         # We iterate the learning process
         start_time = time.time()
-        model.fit(X_train, y_train_normalized, batch_size=batch_size, nb_epoch=n_epochs, verbose=0)
+        model.fit(X_train, y_train_normalized, batch_size=batch_size, epochs=n_epochs, verbose=0)
         self.model = model
-        self.tau = tau
         self.running_time = time.time() - start_time
 
         # We are done!

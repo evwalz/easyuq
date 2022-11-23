@@ -15,11 +15,12 @@ import math
 import numpy as np
 import argparse
 import sys
+import tensorflow
 
 parser=argparse.ArgumentParser()
 
 parser.add_argument('--dir', '-d', required=True, help='Name of the UCI Dataset directory. Eg: bostonHousing')
-parser.add_argument('--epochx','-e', default=500, type=int, help='Multiplier for the number of epochs for training.')
+parser.add_argument('--epochx','-e', default=400, type=int, help='Multiplier for the number of epochs for training.')
 parser.add_argument('--hidden', '-nh', default=2, type=int, help='Number of hidden layers for the neural net')
 
 args=parser.parse_args()
@@ -30,8 +31,8 @@ num_hidden_layers = args.hidden
 
 #sys.path.append('net/')
 
-import net_easuy
-from functions_easuy import optimize_paras, llscore, smooth_crps
+import net_easyuq
+from functions_easyuq import optimize_paras, llscore, smooth_crps
 
 # We delete previous results
 
@@ -48,7 +49,7 @@ _RESULTS_TEST_DF = "./UCI_Datasets/" + data_directory + "/results/test_df_" + st
 _RESULTS_TEST_LOG = "./UCI_Datasets/" + data_directory + "/results/log_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 
 
-_DATA_DIRECTORY_PATH = "./DropoutUncertaintyExps/UCI_Datasets/" + data_directory + "/data/"
+_DATA_DIRECTORY_PATH = "./UCI_Datasets/" + data_directory + "/data/"
 _DATA_FILE = _DATA_DIRECTORY_PATH + "data.txt"
 _HIDDEN_UNITS_FILE = _DATA_DIRECTORY_PATH + "n_hidden.txt"
 _EPOCHS_FILE = _DATA_DIRECTORY_PATH + "n_epochs.txt"
@@ -145,7 +146,7 @@ for split in range(int(n_splits)):
 
     # List of hyperparameters which we will try out using grid-search
     reg_values = np.loadtxt(_REG_VALUES_FILE).tolist()
-    batch_vals = np.loadtxt(_BATCH_VALUES_FILE).tolist()
+    batch_vals = np.loadtxt(_BATCH_FILE).tolist()
     batch_vals = [int(x) for x in batch_vals]
 
     # We perform grid-search to select the best hyperparameters based on the highest log-likelihood value
@@ -158,13 +159,13 @@ for split in range(int(n_splits)):
     
     for bs in batch_vals:
         for reg in reg_values:
-            network = net_easuy.net(X_train.copy(), y_train.copy(), ([int(n_hidden)] * num_hidden_layers),
+            network = net_easyuq.net(X_train.copy(), y_train.copy(), ([int(n_hidden)] * num_hidden_layers),
                               normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=reg, batch_size = bs)
         
             rmse, idr_preds_validation, crps_idr = network.predictIDR(X_validation.copy(), X_train.copy(),
                                                                   y_validation.copy(), y_train.copy())
 
-            fitted_ll, fitted_h, fitted_df = optimize_paras(X_validation, y_validation, y_train)
+            fitted_ll, fitted_h, fitted_df = optimize_paras(idr_preds_validation, y_validation, y_train)
             
             if (fitted_ll < best_ll):
                 best_ll = fitted_ll
@@ -176,7 +177,7 @@ for split in range(int(n_splits)):
             
 
     # Storing test results
-    best_network = net_easuy.net(X_train_original, y_train_original, ([int(n_hidden)] * num_hidden_layers),
+    best_network = net_easyuq.net(X_train_original, y_train_original, ([int(n_hidden)] * num_hidden_layers),
                                normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=best_reg, batch_size = best_batch)
 
     
@@ -211,14 +212,14 @@ for split in range(int(n_splits)):
     print ("Tests on split " + str(split) + " complete.")
     crps_scdf += [crps_test]
     crps_idrs += [crps_idr]
-    lls += [ll]
+    lls += [ll_test]
 
 with open(_RESULTS_TEST_LOG, "a") as myfile:
     myfile.write('CRPS idr %f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
         np.mean(crps_idrs), np.std(crps_idrs), np.std(crps_idrs)/math.sqrt(n_splits),
         np.percentile(crps_idrs, 50), np.percentile(crps_idrs, 25), np.percentile(crps_idrs, 75)))
     myfile.write('CRPS smooth%f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
-        np.mean(ccrps_scdf), np.std(crps_scdf), np.std(crps_scdf)/math.sqrt(n_splits),
+        np.mean(crps_scdf), np.std(crps_scdf), np.std(crps_scdf)/math.sqrt(n_splits),
         np.percentile(crps_scdf, 50), np.percentile(crps_scdf, 25), np.percentile(crps_scdf, 75)))
     myfile.write('lls %f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
         np.mean(lls), np.std(lls), np.std(lls)/math.sqrt(n_splits), 
