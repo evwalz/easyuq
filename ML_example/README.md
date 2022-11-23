@@ -1,6 +1,6 @@
 # ML experiment
 
-Original code taken from https://github.com/yaringal/DropoutUncertaintyExps. 
+Original code and data taken from https://github.com/yaringal/DropoutUncertaintyExps. 
 
 Adaption: Removed dropout layers and included IDR fitting and smoothing. 
 
