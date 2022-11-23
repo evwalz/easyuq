@@ -4,4 +4,4 @@ Original code and data taken from https://github.com/yaringal/DropoutUncertainty
 
 Adaption: Removed dropout layers and included IDR fitting and smoothing. 
 
-The function *smooth_crps* is available here: https://github.com/evwalz/crpsmixture
+Code requires the function *smooth_crps* which is available here: https://github.com/evwalz/crpsmixture
