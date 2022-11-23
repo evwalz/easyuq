@@ -8,8 +8,8 @@ import numpy as np
 from scipy import stats
 from scipy.optimize import minimize_scalar
 from statsmodels.nonparametric.bandwidths import bw_silverman
-import cpp_crpsmixw
-import cpp_int_lims
+from crpsmixture import smooth_crps
+
 
 def smooth_idr_dense_norm(y_help, thresholds ,grd, h, df=None):
     # only for grd is single value
@@ -48,38 +48,6 @@ def llscore(idr_preds_validation, y_validation, h, df=None):
         else:
             s = s - np.log(f)
     return s / len(y_validation)
-
-
-
-def crps_tids_lims(preds, y, h, df):
-    if hasattr(y,  "__len__") == False:
-        y = np.array([y])
-    if len(preds.predictions) != len(y):
-        raise ValueError("preds same length as y")
-    if h < 0:
-        raise ValueError("h must be positive")
-    if df < 0:
-        raise ValueError("df must be positive")
-    #if hasattr(y,  "__len__"):
-    len_preds = [len(x.points) for x in preds.predictions]
-    len_cumsum = np.cumsum(len_preds)
-    len_cumsum = np.insert(len_cumsum, 0, 0)
-    mean = np.concatenate([x.points for x in preds.predictions])
-    weights = np.concatenate([np.diff(np.insert(x.ecdf, 0, 0)) for x in preds.predictions])
-    crps = cpp_int_lims.cpp_int_lims(y,mean,weights, len_cumsum, h, df, -1*float('Inf'), float('Inf'))
-    return crps
-
-def smooth_crps(preds, y, h, df=None):
-    if df == None:
-        n = len(y)
-        crps_val = np.zeros(n)
-        for i in range(n):
-            m = preds.predictions[i].points
-            w = np.diff(np.insert(preds.predictions[i].ecdf, 0, 0))
-            crps_val[i] = cpp_crpsmixw.crpsmixGw(m, w, y[i], h)
-        return np.mean(crps_val)
-    else:
-        return crps_tids_lims(preds, y, h, df)
 
 
 
