@@ -11,6 +11,45 @@ from statsmodels.nonparametric.bandwidths import bw_silverman
 import cpp_crpsmixw
 import cpp_int_lims
 
+def t_pdf(yval, ens, h, df):
+    return stats.t.pdf((yval - ens), df, scale = h)
+
+def norm_pdf(yval, ens, h, df):
+    return stats.norm.pdf((yval - ens), scale = h)
+
+
+def optim_h(X, y, df):
+    if df == None:
+        fun = norm_pdf
+    else:
+        fun = t_pdf
+    bb = np.max(y)
+    def opt_ll(h):
+        n = len(y)
+        out = 0
+        for i in range(n):
+            yval = y[i]
+            ens = X[i,]
+            dis = fun(yval, ens, h, df)
+            f = np.mean(dis)
+            out = out - no.log(f)
+        return out / n
+        
+
+def ensemble_smoothing(ensemble, y):
+    dfs = [None, 2, 3, 4, 5, 10, 20]
+    hs, lls = [], []
+    for df in dfs:
+        h, ll = optim_h(ensemble, y, df)
+        hs += [h]
+        lls += [ll]
+        
+    ll_ix = np.nanargmin(lls)
+    ll_min = lls[ll_ix]
+    h_min = hs[ll_ix]
+    df_min = dfs[ll_ix]
+    return ll_min, h_min, df_min  
+
 def smooth_idr_dense_norm(y_help, thresholds ,grd, h, df=None):
     # only for grd is single value
     return np.sum(np.diff(np.insert(y_help, 0, 0)) * stats.norm.pdf((grd - thresholds), scale=h))
