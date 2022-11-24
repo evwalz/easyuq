@@ -10,6 +10,8 @@ from scipy.optimize import minimize_scalar
 from statsmodels.nonparametric.bandwidths import bw_silverman
 import cpp_crpsmixw
 import cpp_int_lims
+from statsmodels.distributions.empirical_distribution import ECDF
+
 
 def t_pdf(yval, ens, h, df):
     return stats.t.pdf((yval - ens), df, scale = h)
@@ -17,6 +19,57 @@ def t_pdf(yval, ens, h, df):
 def norm_pdf(yval, ens, h, df):
     return stats.norm.pdf((yval - ens), scale = h)
 
+def llscore_ens_smoothing(forecast, y, h, df=None):
+    if df == None:
+        fun = norm_pdf
+    else:
+        fun = t_pdf
+
+    out = 0
+    n = len(y)
+    for i in range(n):
+        yval = y[i]
+        ens = forecast[i,]
+        dis = fun(yval, ens, h, df)
+        f = np.mean(dis)
+        out = out - np.log(f)
+    return out / n
+
+def crps_tids2(forecast, y, h, df):
+    if hasattr(y,  "__len__") == False:
+        y = np.array([y])
+    #if len(preds.predictions) != len(y):
+     #   raise ValueError("preds same length as y")
+    if h < 0:
+        raise ValueError("h must be positive")
+    if df < 0:
+        raise ValueError("df must be positive") 
+    #if hasattr(y,  "__len__"):
+    mean = [np.unique(forecast[i,]) for i in range(len(y))]
+    len_preds = [len(x) for x in mean]
+    len_cumsum = np.cumsum(len_preds)
+    len_cumsum = np.insert(len_cumsum, 0, 0)
+    #mean = np.concatenate([x.points for x in preds.predictions])
+    #ecdfs = [ECDF(forecast_test[i,])(mean[i]) for i in range(len(obs_test))]
+    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
+    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
+    mean = np.concatenate(mean)
+    crps = cpp_int_lims.cpp_int_lims(y,mean,weights, len_cumsum, h, df, float('-Inf'), float('Inf'))
+    return crps
+
+def crps_ens_smoothing(forecast, y, h, df=None):
+    if df == None:
+        n = len(y)
+        crps_val = np.zeros(n)
+        for i in range(n):
+            #m = #preds.predictions[i].points
+            m = np.sort(np.unique(forecast[i, ]))
+            ecdf = ECDF(forecast[i,])
+            w = np.diff(np.insert(ecdf(m), 0, 0)) 
+            crps_val[i] = cpp_crpsmixw.crpsmixGw(m, w, y[i], h)
+        return np.mean(crps_val)
+    else:
+        return crps_tids2(forecast, y, h, df)
 
 def optim_h(X, y, df):
     if df == None:
@@ -32,8 +85,11 @@ def optim_h(X, y, df):
             ens = X[i,]
             dis = fun(yval, ens, h, df)
             f = np.mean(dis)
-            out = out - no.log(f)
+            out = out - np.log(f)
         return out / n
+    res = minimize_scalar(opt_ll, method='bounded', bounds=(0, bb))
+    return res.x, res.fun
+
         
 
 def ensemble_smoothing(ensemble, y):
@@ -48,7 +104,22 @@ def ensemble_smoothing(ensemble, y):
     ll_min = lls[ll_ix]
     h_min = hs[ll_ix]
     df_min = dfs[ll_ix]
-    return ll_min, h_min, df_min  
+    return ll_min, h_min, df_min
+
+def log_norm(y, mean, sigma):
+    return -1*np.mean(np.log(stats.norm.pdf(y - mean, scale = sigma)))
+
+def single_gaussian_optim(y, mean):
+    y_scale = y - mean
+    bb = np.max(y)
+    def opt_log_sigma(sigma):
+        return -1*np.mean(np.log(stats.norm.pdf(y_scale, scale = sigma)))
+    res = minimize_scalar(opt_log_sigma, method = 'bounded', bounds =(1e-8, bb))
+    return res.x
+
+
+
+#################################
 
 def smooth_idr_dense_norm(y_help, thresholds ,grd, h, df=None):
     # only for grd is single value
