@@ -11,7 +11,11 @@ from keras.regularizers import l2
 from keras import Input
 from keras.layers import Dropout
 from keras.layers import Dense
+from keras.layers import Layer
+from keras.layers import Concatenate
 from keras import Model
+from keras.initializers import glorot_normal
+from keras import backend as K
 
 import time
 
@@ -50,7 +54,7 @@ class GaussianLayer(Layer):
 class GaussianLayer_protein(Layer):        
     def __init__(self, output_dim, **kwargs):
         self.output_dim = output_dim
-        super(GaussianLayer, self).__init__(**kwargs)
+        super(GaussianLayer_protein, self).__init__(**kwargs)
     def build(self, input_shape):
         self.kernel_1 = self.add_weight(name='kernel_1', 
                                       shape=(100, self.output_dim),
@@ -68,7 +72,7 @@ class GaussianLayer_protein(Layer):
                                     shape=(self.output_dim, ),
                                     initializer=glorot_normal(),
                                     trainable=True)
-        super(GaussianLayer, self).build(input_shape)     
+        super(GaussianLayer_protein, self).build(input_shape)     
     def call(self, x):
         output_mu  = K.dot(x, self.kernel_1) + self.bias_1
         output_sig = K.dot(x, self.kernel_2) + self.bias_2

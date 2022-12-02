@@ -1,0 +1,3 @@
+CRPS idr 0.662949 +- 0.268027 (stddev) +- 0.059933 (std error), median 0.599865 25p 0.522300 75p 0.719352 
+CRPS smooth0.635895 +- 0.264140 (stddev) +- 0.059063 (std error), median 0.552683 25p 0.508165 75p 0.697564 
+lls 1.364449 +- 0.274627 (stddev) +- 0.061409 (std error), median 1.263540 25p 1.161462 75p 1.496229 

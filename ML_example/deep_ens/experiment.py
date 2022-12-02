@@ -58,7 +58,7 @@ _RESULTS_TEST_BATCH = "./UCI_Datasets/" + data_directory + "/results/test_batch_
 _RESULTS_TEST_LOG = "./UCI_Datasets/" + data_directory + "/results/log_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 
 
-_DATA_DIRECTORY_PATH = "././UCI_Datasets/" + data_directory + "/data/"
+_DATA_DIRECTORY_PATH = ".././UCI_Datasets/" + data_directory + "/data/"
 _DATA_FILE = _DATA_DIRECTORY_PATH + "data.txt"
 _HIDDEN_UNITS_FILE = _DATA_DIRECTORY_PATH + "n_hidden.txt"
 _EPOCHS_FILE = _DATA_DIRECTORY_PATH + "n_epochs.txt"
@@ -67,8 +67,8 @@ _INDEX_TARGET_FILE = _DATA_DIRECTORY_PATH + "index_target.txt"
 _N_SPLITS_FILE = _DATA_DIRECTORY_PATH + "n_splits.txt"
 
 # Added for EasyUQ
-_BATCH_FILE = "././UCI_Datasets/" + data_directory + "/data/batch_sizes.txt"
-_REG_VALUES_FILE = "././UCI_Datasets/" + data_directory + "/data/reg_values.txt" 
+_BATCH_FILE = ".././UCI_Datasets/" + data_directory + "/data/batch_sizes.txt"
+_REG_VALUES_FILE = ".././UCI_Datasets/" + data_directory + "/data/reg_values.txt" 
 
 def _get_index_train_test_path(split_num, train = True):
     """
@@ -169,7 +169,7 @@ for split in range(int(n_splits)):
             network = net_ensemble.net(X_train.copy(), y_train.copy(), ([int(n_hidden)] * num_hidden_layers),
                               normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=reg, batch_size = bs, protein = protein)
         
-            preds = network.predict(X_validation.copy(), y_validation)
+            preds = network.predict(X_validation.copy())
             llscore = log_like_norm(y_validation, preds)
             
             if (llscore < best_ll):
@@ -186,7 +186,7 @@ for split in range(int(n_splits)):
         best_network1 = net_ensemble.net(X_train_original, y_train_original, ([int(n_hidden)] * num_hidden_layers),
                                          normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=best_reg,
                                          batch_size=best_batch, protein = protein)
-        preds_test = best_network1.predict(X_test, y_test)
+        preds_test = best_network1.predict(X_test)
         preds_mu[:, ens] = preds_test[:, 0]
         preds_var[:, ens] = preds_test[:, 1]
 
