@@ -47,12 +47,43 @@ class GaussianLayer(Layer):
         return [(input_shape[0], self.output_dim), (input_shape[0], self.output_dim)]
 
 
+class GaussianLayer_protein(Layer):        
+    def __init__(self, output_dim, **kwargs):
+        self.output_dim = output_dim
+        super(GaussianLayer, self).__init__(**kwargs)
+    def build(self, input_shape):
+        self.kernel_1 = self.add_weight(name='kernel_1', 
+                                      shape=(100, self.output_dim),
+                                      initializer=glorot_normal(),
+                                      trainable=True)
+        self.kernel_2 = self.add_weight(name='kernel_2', 
+                                      shape=(100, self.output_dim),
+                                      initializer=glorot_normal(),
+                                      trainable=True)
+        self.bias_1 = self.add_weight(name='bias_1',
+                                    shape=(self.output_dim, ),
+                                    initializer=glorot_normal(),
+                                    trainable=True)
+        self.bias_2 = self.add_weight(name='bias_2',
+                                    shape=(self.output_dim, ),
+                                    initializer=glorot_normal(),
+                                    trainable=True)
+        super(GaussianLayer, self).build(input_shape)     
+    def call(self, x):
+        output_mu  = K.dot(x, self.kernel_1) + self.bias_1
+        output_sig = K.dot(x, self.kernel_2) + self.bias_2
+        output_sig_pos = K.log(1 + K.exp(output_sig)) + 1e-06  
+        return [output_mu, output_sig_pos]    
+    def compute_output_shape(self, input_shape):
+        return [(input_shape[0], self.output_dim), (input_shape[0], self.output_dim)]
+
+
 
 
 class net:
 
     def __init__(self, X_train, y_train, n_hidden, n_epochs = 40,
-        normalize = False, reg = 0, batch_size = 32):
+        normalize = False, reg = 0, batch_size = 32, protein = False):
 
         """
             Constructor for the class implementing a Bayesian neural network
@@ -98,18 +129,27 @@ class net:
         # We construct the network
         N = X_train.shape[0]
 
-
-        inputs = Input(shape=(X_train.shape[1],))
-        inter = Dense(n_hidden[0], activation='relu', kernel_regularizer=l2(reg))(inputs)
-        for i in range(len(n_hidden) - 1):
-            inter = Dense(n_hidden[i+1], activation='relu', kernel_regularizer=l2(reg))(inter)
-        mu, var = GaussianLayer(1, name = 'main_output')(inter)
-        combined_outputs = Concatenate()([mu, var])
-        model = Model(inputs, combined_outputs)
+        if protein:
+            inputs = Input(shape=(X_train.shape[1],))
+            inter = Dense(n_hidden[0], activation='relu', kernel_regularizer=l2(reg))(inputs)
+            for i in range(len(n_hidden) - 1):
+                inter = Dense(n_hidden[i+1], activation='relu', kernel_regularizer=l2(reg))(inter)
+            mu, var = GaussianLayer_protein(1, name = 'main_output')(inter)
+            combined_outputs = Concatenate()([mu, var])
+            model = Model(inputs, combined_outputs)
+        else:
+            inputs = Input(shape=(X_train.shape[1],))
+            inter = Dense(n_hidden[0], activation='relu', kernel_regularizer=l2(reg))(inputs)
+            for i in range(len(n_hidden) - 1):
+                inter = Dense(n_hidden[i+1], activation='relu', kernel_regularizer=l2(reg))(inter)
+            mu, var = GaussianLayer(1, name = 'main_output')(inter)
+            combined_outputs = Concatenate()([mu, var])
+            model = Model(inputs, combined_outputs)
 
         def log_loss(true, pred):
             loss = K.mean( 0.5*(K.log(pred[:, 1:])) + 0.5 * K.square(true - pred[:, 0:1]) / pred[:, 1:], -1) + 1e-6
             return loss
+        
         model.compile(loss=log_loss, optimizer='adam')
 
 

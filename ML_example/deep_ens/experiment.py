@@ -2,7 +2,7 @@
 # This code is based on the code by Jose Miguel Hernandez-Lobato used for his 
 # paper "Probabilistic Backpropagation for Scalable Learning of Bayesian Neural Networks".
 
-# This file contains code to train EasyUQ on UCI datasets using the following algorithm:
+# This file contains code to train Deep ensemble on UCI datasets using the following algorithm:
 # 1. Create 20 random splits of the training-test dataset.
 # 2. For each split:
 # 3.   Create a validation (val) set taking 20% of the training set.
@@ -17,6 +17,13 @@ import argparse
 import sys
 import tensorflow
 
+from scipy.stats import norm
+from properscoring import crps_gaussian
+
+from subprocess import call
+
+import net_ensemble
+
 parser=argparse.ArgumentParser()
 
 parser.add_argument('--dir', '-d', required=True, help='Name of the UCI Dataset directory. Eg: bostonHousing')
@@ -28,27 +35,30 @@ args=parser.parse_args()
 data_directory = args.dir
 epochs_multiplier = args.epochx
 num_hidden_layers = args.hidden
+protein = False
 
-import net_ensemble
-from functions_deepens import 
-
-# We delete previous results
-
-from subprocess import call
+# Note that ONLY protein data uses more hidden units 
+if data_directory == 'protein-tertiary-structure':
+    protein = True
 
 
+# Define functions to compute log score
+def log_like_norm(y, preds):
+    return -1 * np.mean(np.log(norm.pdf(y, loc=preds[:, 0], scale=np.sqrt(preds[:, 1]))))
+
+
+def log_like_norm_classic(y, mu, sigma):
+    return -1 * np.mean(np.log(norm.pdf(y, loc=mu, scale=sigma)))
+
+# store results
 _RESULTS_TEST_LL = "./UCI_Datasets/" + data_directory + "/results/test_ll_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_CRPSS = "./UCI_Datasets/" + data_directory + "/results/test_crpss_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
-_RESULTS_TEST_CRPSIDR = "./UCI_Datasets/" + data_directory + "/results/test_crpsidr_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_REG = "./UCI_Datasets/" + data_directory + "/results/test_reg_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_BATCH = "./UCI_Datasets/" + data_directory + "/results/test_batch_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
-_RESULTS_TEST_H = "./UCI_Datasets/" + data_directory + "/results/test_bw_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
-_RESULTS_TEST_DF = "./UCI_Datasets/" + data_directory + "/results/test_df_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
-_RESULTS_TEST_FLAG = "./UCI_Datasets/" + data_directory + "/results/test_flag_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 _RESULTS_TEST_LOG = "./UCI_Datasets/" + data_directory + "/results/log_" + str(epochs_multiplier) + "_xepochs_" + str(num_hidden_layers) + "_hidden_layers.txt"
 
 
-_DATA_DIRECTORY_PATH = "./UCI_Datasets/" + data_directory + "/data/"
+_DATA_DIRECTORY_PATH = "././UCI_Datasets/" + data_directory + "/data/"
 _DATA_FILE = _DATA_DIRECTORY_PATH + "data.txt"
 _HIDDEN_UNITS_FILE = _DATA_DIRECTORY_PATH + "n_hidden.txt"
 _EPOCHS_FILE = _DATA_DIRECTORY_PATH + "n_epochs.txt"
@@ -57,8 +67,8 @@ _INDEX_TARGET_FILE = _DATA_DIRECTORY_PATH + "index_target.txt"
 _N_SPLITS_FILE = _DATA_DIRECTORY_PATH + "n_splits.txt"
 
 # Added for EasyUQ
-_BATCH_FILE = "./UCI_Datasets/" + data_directory + "/data/batch_sizes.txt"
-_REG_VALUES_FILE = "./UCI_Datasets/" + data_directory + "/data/reg_values.txt" 
+_BATCH_FILE = "././UCI_Datasets/" + data_directory + "/data/batch_sizes.txt"
+_REG_VALUES_FILE = "././UCI_Datasets/" + data_directory + "/data/reg_values.txt" 
 
 def _get_index_train_test_path(split_num, train = True):
     """
@@ -77,12 +87,8 @@ def _get_index_train_test_path(split_num, train = True):
 print ("Removing existing result files...")
 call(["rm", _RESULTS_TEST_LL])
 call(["rm", _RESULTS_TEST_CRPSS])
-call(["rm", _RESULTS_TEST_CRPSIDR])
 call(["rm", _RESULTS_TEST_BATCH])
 call(["rm", _RESULTS_TEST_REG])
-call(["rm", _RESULTS_TEST_H])
-call(["rm", _RESULTS_TEST_DF])
-call(["rm", _RESULTS_TEST_FLAG])
 call(["rm", _RESULTS_TEST_LOG])
 print ("Result files removed.")
 
@@ -117,7 +123,7 @@ y = data[ : , int(index_target.tolist()) ]
 n_splits = np.loadtxt(_N_SPLITS_FILE)
 print ("Done.")
 
-crps_scdf, crps_idrs, lls = [], [], []
+crps_scdf, lls = [], []
 for split in range(int(n_splits)):
 
     # We load the indexes of the training and test sets
@@ -156,38 +162,40 @@ for split in range(int(n_splits)):
     best_ll = float('inf')
     best_reg = 0
     best_batch = 32
-    best_h = 1
-    best_free_degree = 2
-    test_flag = 0
+
     
     for bs in batch_vals:
         for reg in reg_values:
-            network = net_easyuq.net(X_train.copy(), y_train.copy(), ([int(n_hidden)] * num_hidden_layers),
-                              normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=reg, batch_size = bs)
+            network = net_ensemble.net(X_train.copy(), y_train.copy(), ([int(n_hidden)] * num_hidden_layers),
+                              normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=reg, batch_size = bs, protein = protein)
         
-            rmse, idr_preds_validation, crps_idr = network.predictIDR(X_validation.copy(), X_train.copy(),
-                                                                  y_validation.copy(), y_train.copy())
-
-            fitted_ll, fitted_h, fitted_df, flag = optimize_paras(idr_preds_validation, y_validation, y_train)
+            preds = network.predict(X_validation.copy(), y_validation)
+            llscore = log_like_norm(y_validation, preds)
             
-            if (fitted_ll < best_ll):
-                best_ll = fitted_ll
+            if (llscore < best_ll):
+                best_ll = llscore
                 best_network = network
                 best_reg = reg
                 best_batch = bs
-                best_free_degree = fitted_df
-                best_h = fitted_h
-                test_flag = flag
+        
 
-    # Storing test results
-    best_network = net_easyuq.net(X_train_original, y_train_original, ([int(n_hidden)] * num_hidden_layers),
-                               normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=best_reg, batch_size = best_batch)
+    # Train 5 networks
+    preds_mu = np.zeros((len(y_test), 5))
+    preds_var = np.zeros((len(y_test), 5))
+    for ens in range(5):
+        best_network1 = net_ensemble.net(X_train_original, y_train_original, ([int(n_hidden)] * num_hidden_layers),
+                                         normalize=True, n_epochs=int(n_epochs * epochs_multiplier), reg=best_reg,
+                                         batch_size=best_batch, protein = protein)
+        preds_test = best_network1.predict(X_test, y_test)
+        preds_mu[:, ens] = preds_test[:, 0]
+        preds_var[:, ens] = preds_test[:, 1]
 
-    
-    rmse, idr_preds_test, crps_idr = best_network.predictIDR(X_test, X_train_original, y_test, y_train_original)
+    final_mean = np.mean(preds_mu, axis=1)
+    final_var = np.mean(preds_var, axis=1) + np.mean(np.square(preds_mu), axis=1) - np.square(final_mean)
+    final_sigma = np.sqrt(final_var)
 
-    ll_test = llscore(idr_preds_test, y_test, best_h, best_free_degree)
-    crps_test = smooth_crps(idr_preds_test, y_test, best_h, best_free_degree)
+    ll_test = log_like_norm_classic(y_test, final_mean, final_sigma)
+    crps_test = np.mean(crps_gaussian(y_test, final_mean, final_sigma))
 
     
     
@@ -197,8 +205,6 @@ for split in range(int(n_splits)):
     with open(_RESULTS_TEST_CRPSS, "a") as myfile:
         myfile.write(repr(crps_test) + '\n')
 
-    with open(_RESULTS_TEST_CRPSIDR, "a") as myfile:
-        myfile.write(repr(crps_idr) + '\n')
 
     with open(_RESULTS_TEST_REG, "a") as myfile:
         myfile.write(repr(best_reg) + '\n')
@@ -206,24 +212,12 @@ for split in range(int(n_splits)):
     with open(_RESULTS_TEST_BATCH, "a") as myfile:
         myfile.write(repr(best_batch) + '\n')
 
-    with open(_RESULTS_TEST_H, "a") as myfile:
-        myfile.write(repr(best_h) + '\n')
-
-    with open(_RESULTS_TEST_DF, "a") as myfile:
-        myfile.write(repr(best_free_degree) + '\n')
-
-    with open(_RESULTS_TEST_FLAG, "a") as myfile:
-        myfile.write(repr(test_flag) + '\n')
         
     print ("Tests on split " + str(split) + " complete.")
     crps_scdf += [crps_test]
-    crps_idrs += [crps_idr]
     lls += [ll_test]
 
 with open(_RESULTS_TEST_LOG, "a") as myfile:
-    myfile.write('CRPS idr %f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
-        np.mean(crps_idrs), np.std(crps_idrs), np.std(crps_idrs)/math.sqrt(n_splits),
-        np.percentile(crps_idrs, 50), np.percentile(crps_idrs, 25), np.percentile(crps_idrs, 75)))
     myfile.write('CRPS smooth%f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
         np.mean(crps_scdf), np.std(crps_scdf), np.std(crps_scdf)/math.sqrt(n_splits),
         np.percentile(crps_scdf, 50), np.percentile(crps_scdf, 25), np.percentile(crps_scdf, 75)))
