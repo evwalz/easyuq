@@ -7,3 +7,5 @@ Adaptation of original code for EasyUQ: Removed dropout layers and included IDR 
 To reproduce experiment run:
 
 ``` python experiment.py --dir energy -e 1 -nh 1 ```
+
+Results saved in [UCI_Dataset](https://github.com/evwalz/easyuq/tree/main/ML_example/UCI_Datasets)
