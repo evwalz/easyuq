@@ -27,8 +27,8 @@ import net_ensemble
 parser=argparse.ArgumentParser()
 
 parser.add_argument('--dir', '-d', required=True, help='Name of the UCI Dataset directory. Eg: bostonHousing')
-parser.add_argument('--epochx','-e', default=400, type=int, help='Multiplier for the number of epochs for training.')
-parser.add_argument('--hidden', '-nh', default=2, type=int, help='Number of hidden layers for the neural net')
+parser.add_argument('--epochx','-e', default=1, type=int, help='Multiplier for the number of epochs for training.')
+parser.add_argument('--hidden', '-nh', default=1, type=int, help='Number of hidden layers for the neural net')
 
 args=parser.parse_args()
 
@@ -218,7 +218,7 @@ for split in range(int(n_splits)):
     lls += [ll_test]
 
 with open(_RESULTS_TEST_LOG, "a") as myfile:
-    myfile.write('CRPS smooth%f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
+    myfile.write('CRPS %f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
         np.mean(crps_scdf), np.std(crps_scdf), np.std(crps_scdf)/math.sqrt(n_splits),
         np.percentile(crps_scdf, 50), np.percentile(crps_scdf, 25), np.percentile(crps_scdf, 75)))
     myfile.write('lls %f +- %f (stddev) +- %f (std error), median %f 25p %f 75p %f \n' % (
