@@ -168,13 +168,13 @@ def t_pdf(yval, thresholds, h, df):
     return stats.t.pdf((yval - thresholds), df, scale=h)
 
 
-def optimize_ll(preds, y, df=None):
+def onefit_h(preds, y, df):
     if df == None:
         fun = norm_pdf
     else:
         fun = t_pdf
     bb = np.max(y)
-
+    
     def opt_ll(h):
         out = 0
         n = len(y)
@@ -202,93 +202,24 @@ def optimize_ll(preds, y, df=None):
             else:
                 out = out - np.log(f)
         return out / n
-
-    # bracket = (0.5, 1.5)
     res = minimize_scalar(opt_ll, method='bounded', bounds=(0, bb))
     return res.x, res.fun
 
+def optimize_paras_onefit(preds_train, y_train):
+    hs, lls = [], []
+    dfs = [None, 20, 10, 5, 4, 3, 2]
+    for df in dfs:
+        h, ll = onefit_h(preds_train, y_train, df)
+        hs += [h]
+        lls += [ll]
 
-def optimize_ll2(preds, y, df=None, tol=1e-7):
-    #if df == None:
-    #    fun = norm_pdf
-    #else:
-    #    fun = t_pdf
-    bb = np.max(y)
-
-    def opt_ll(h):
-        return llscore(preds, y, h, df)
-
-    # bracket = (0.5, 1.5)
-    res = minimize_scalar(opt_ll, method='bounded', bounds=(0, bb), tol=tol)
-    return res.x, res.fun
-
-
-def crps_norm_optim(y, mean):
-    y_scale = y - mean
-    bb = np.max(y)
-    def opt_crps_sigma(sigma):
-        z = y_scale / sigma
-        crps_score = y_scale * (2* stats.norm.cdf(y_scale, scale = sigma)-1) + sigma * (np.sqrt(2) * np.exp(-0.5*z*z)-1) / np.sqrt(np.pi)
-        return np.mean(crps_score)
-    res = minimize_scalar(opt_crps_sigma, method = 'bounded', bounds =(0, bb))
-    return res.x
-
-def log_norm_optim(y, mean):
-    y_scale = y - mean
-    bb = np.max(y)
-    aa = np.min(np.diff(np.sort(y)))/100
-    def opt_log_sigma(sigma):
-        return -1*np.mean(np.log(stats.norm.pdf(y_scale, scale = sigma)))
-    res = minimize_scalar(opt_log_sigma, method = 'bounded', bounds =(aa, bb))
-    return res.x
-
-def crps_normal(y, mean, sigma):
-    y_scale = y - mean
-    z = y_scale / sigma
-    crps_score = y_scale * (2* stats.norm.cdf(y_scale, scale = sigma)-1) + sigma * (np.sqrt(2) * np.exp(-0.5*z*z)-1) / np.sqrt(np.pi)
-    return np.mean(crps_score)
-
-def log_norm(y, mean, sigma):
-    return -1*np.mean(np.log(stats.norm.pdf(y - mean, scale = sigma)))
-
-
-
-def optimize_paras(idr_preds_validation, y_validation, y_train):
-    h_rule = bw_silverman(y_train)
-    tol = h_rule / 1000
-
-    ll_deg1 = llscore(idr_preds_validation, y_validation, h = tol, df=2)
-    ll_deg2 = llscore(idr_preds_validation, y_validation, h = tol / 100, df = 2)
-    if ll_deg2 < ll_deg1:
-        ll_deg1 = llscore(idr_preds_validation, y_validation, h = tol, df=None)
-        ll_deg2 = llscore(idr_preds_validation, y_validation, h = tol / 100, df = None)
-        df = None
-        if ll_deg2 < ll_deg1:
-            h = h_rule
-            ll = llscore(idr_preds_validation, y_validation, h =h_rule, df = None)
-        else:
-            h, ll = optimize_ll2(idr_preds_validation, y_validation, df=None, tol = tol)
-        return ll, h, df
-    
-    else:
-        hs, lls = [], []
-        dfs = [None, 20, 10, 5, 4, 3, 2]
-        tol2 = tol / 100
-        for df in dfs:
-            h, ll = optimize_ll2(idr_preds_validation, y_validation, df, tol = tol2)
-            hs += [h]
-            lls += [ll]
-
-        ll_ix = np.argmin(lls)
-        ll_min = lls[ll_ix]
-        h_min = hs[ll_ix]
-        df_min = dfs[ll_ix]
-        return ll_min, h_min, df_min
+    ll_ix = np.nanargmin(lls)
+    ll_min = lls[ll_ix]
+    h_min = hs[ll_ix]
+    df_min = dfs[ll_ix]
+    return ll_min, h_min, df_min
 
 
 
 
 
-
-
-    
