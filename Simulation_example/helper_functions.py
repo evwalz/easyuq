@@ -12,7 +12,6 @@ import random
 from isodisreg import idr
 import isodisreg
 import pandas as pd
-from crpsmixture import smooth_crps
 
 def smooth_idr_dense_norm(y_help, thresholds ,grd, h, df=None):
     # only for grd is single value
@@ -52,7 +51,12 @@ def llscore(idr_preds_validation, y_validation, h, df=None):
             s = s - np.log(f)
     return s / len(y_validation)
 
+def norm_pdf(yval, thresholds, h, df):
+    return stats.norm.pdf((yval - thresholds), scale=h)
 
+
+def t_pdf(yval, thresholds, h, df):
+    return stats.t.pdf((yval - thresholds), df, scale=h)
 
 def onefit_h(preds, y, df):
     if df == None:
