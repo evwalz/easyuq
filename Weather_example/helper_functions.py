@@ -8,7 +8,6 @@ import numpy as np
 from scipy import stats
 from scipy.optimize import minimize_scalar
 from statsmodels.nonparametric.bandwidths import bw_silverman
-from crpsmixture import smooth_crps
 from statsmodels.distributions.empirical_distribution import ECDF
 
 
