@@ -287,6 +287,41 @@ def optimize_paras(idr_preds_validation, y_validation, y_train):
 
 
 
+def algo72_ensemble(fct_train, fct_test, y_train):
+    
+    n = len(fct_train)
+    m = len(fct_test)
+    sum_x = np.sum(fct_train)
+    sum_x2 = np.sum(np.square(fct_train))
+    XX = np.zeros((2, 2))
+    XX[0, 0] = sum_x2
+    XX[0, 1] = XX[1, 0] = -1*sum_x
+    XX[1, 1] = n
+    XX = XX / (n*sum_x2 - (sum_x)**2)
+    X_tr = np.ones((len(fct_train), 2))
+    X_tr[:, 1] = fct_train
+    X_tr_XX = X_tr @ XX
+    H = X_tr_XX @ np.transpose(X_tr)
+    C = np.zeros((m, n))
+    g2 = XX[0, 0] + XX[1, 0]* fct_test+ fct_test*( XX[0,1]+ fct_test*XX[1, 1])
+    g = ghelp =np.zeros(n+1)
+    Hbar = np.zeros((n, n))
+    
+    for j in range(m):
+        g[0:n] = X_tr_XX[:, 0] + X_tr_XX[:, 1] * fct_test[j]
+        g[n] = g2[j]
+        Hbar = H - np.outer(g[0:n], g[0:n]) / (1-g[n])
+        g = g / (1 + g[n]) 
+        gsrt = np.sqrt(1 - g[n])
+        Hdiagsqrt = np.sqrt(1 - np.diag(Hbar)[0:n])
+        B = gsrt + g[0:n]/Hdiagsqrt
+        A = np.sum(g[0:n]*y_train) / gsrt + (y_train - np.sum(Hbar[0:n, 0:n].T * y_train, axis = 1)) / Hdiagsqrt
+        C[j, :] = A / B
+    
+    return C
+
+
+
 
 
 
