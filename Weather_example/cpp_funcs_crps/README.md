@@ -1,4 +1,4 @@
-# CRPS functions:
+# Provide CRPS functions to python using Pybind11:
 
 1. Create a folder named "thirdparty" 
 
