@@ -8,5 +8,7 @@ Implementation of IDR available here: https://github.com/evwalz/isodisreg
 
 CRPS functions available here: https://github.com/evwalz/crpsmixture
 
+Remaining CRPS functions available [here](./Weather_example/cpp_funcs_crps)
+
 # Reference
 Link to arXiv paper to be added
