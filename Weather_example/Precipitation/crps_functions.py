@@ -41,79 +41,6 @@ def crps_idr_mixnorm(preds, y, h, low):
 
 
 # Precipitation with censoring
-def crps_ens_censored(ens, y, h, df):
-    n = len(y)
-    y_zero = y[y == 0]
-    y_sub = y[y > 0]
-    n_pos = len(y_sub)
-    n_zero = len(y_zero)
-    if n_zero == 0:
-        ix_greater = np.where(y > 0)[0]
-        ens_sub = ens[ix_greater , ]
-        return ens_tids_lims(ens_sub, y_sub, h, df, low = 0)
-    elif n_pos == 0:
-        ix_zero = np.where(y == 0)[0]
-        ens_zero = ens[ix_zero , ]
-        return ens_censored_tids_lims(ens_zero, y_zero, h, df, low = 0)
-    else:
-        ix_greater = np.where(y > 0)[0]
-        ix_zero = np.where(y == 0)[0]
-        ens_sub = ens[ix_greater , ]
-        ens_zero = ens[ix_zero , ]
-        crps_pos = ens_tids_lims(ens_sub, y_sub, h, df, low = 0)
-        crps_zeros = ens_censored_tids_lims(ens_zero, y_zero, h, df, low = 0)
-        return (crps_pos*n_pos + crps_zeros*n_zero) / n
-
-def ens_tids_lims(forecast, y, h, df, low):
-    mean = [np.unique(forecast[i,]) for i in range(len(y))]
-    len_preds = [len(x) for x in mean]
-    len_cumsum = np.cumsum(len_preds)
-    len_cumsum = np.insert(len_cumsum, 0, 0)
-    #mean = np.concatenate([x.points for x in preds.predictions])
-    #ecdfs = [ECDF(forecast_test[i,])(mean[i]) for i in range(len(obs_test))]
-    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
-    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
-    mean = np.concatenate(mean)
-    yc = y.copy()
-    crps = crps_lims.crps_t_lims(yc,mean,weights, len_cumsum, h, df, low, float('Inf'))
-    return crps
-
-def ens_censored_tids_lims(forecast, y, h, df, low):
-    #if hasattr(y,  "__len__"):
-    mean = [np.unique(forecast[i,]) for i in range(len(y))]
-    len_preds = [len(x) for x in mean]
-    len_cumsum = np.cumsum(len_preds)
-    len_cumsum = np.insert(len_cumsum, 0, 0)
-    #mean = np.concatenate([x.points for x in preds.predictions])
-    #ecdfs = [ECDF(forecast_test[i,])(mean[i]) for i in range(len(obs_test))]
-    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
-    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
-    mean = np.concatenate(mean)
-    yc = y.copy()
-    crps = crps_lims.crps_t_censored(yc,mean,weights, len_cumsum, h, df, low, float('Inf'))
-    return crps
-
-def crps_ens_below0(forecast, y, h, df):
-    mean = [np.unique(forecast[i,]) for i in range(len(y))]
-    len_preds = [len(x) for x in mean]
-    len_cumsum = np.cumsum(len_preds)
-    len_cumsum = np.insert(len_cumsum, 0, 0)
-    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
-    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
-    mean = np.concatenate(mean)
-    yc = y.copy()
-    crps =crps_lims.crps_int_below0(yc,mean,weights, len_cumsum, h, df, -float('Inf'), 0)
-    return crps
-
-
-def crps_ens_precip(forecast, y, h, df):
-    below0 = crps_ens_below0(forecast, y, h, df) 
-    censored = crps_ens_censored(forecast, y, h, df)
-    classic = below0 + censored
-    return classic, censored
-
-
-
 def crps_idr_censored(out, fct, y, h, df):
     n = len(y)
     y_zero = y[y == 0]
@@ -154,3 +81,68 @@ def idr_tids_lims(preds, y, h, df, low = -1*float('Inf')):
     crps = crps_lims.crps_t_lims(yc,mean,weights, len_cumsum, h, df, low, float('Inf'))
     return crps
 
+
+def crps_ens_precip_rot(forecast, y, h):
+    below0 = crps_ens_below0_rot(forecast, y, h) 
+    censored = crps_ens_censored_rot(forecast, y, h)
+    classic = below0 + censored
+    return classic, censored
+
+def crps_ens_below0_rot(forecast, y, h,):
+    mean = [np.unique(forecast[i,]) for i in range(len(y))]
+    len_preds = [len(x) for x in mean]
+    len_cumsum = np.cumsum(len_preds)
+    len_cumsum = np.insert(len_cumsum, 0, 0)
+    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
+    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
+    mean = np.concatenate(mean)
+    yc = y.copy()
+    crps =crps_lims.crps_norm_hvec_below0(yc,mean,weights, len_cumsum, h, -float('Inf'), 0)
+    return crps
+
+def crps_ens_censored_rot(ens, y, h):
+    n = len(y)
+    y_zero = y[y == 0]
+    y_sub = y[y > 0]
+    n_pos = len(y_sub)
+    n_zero = len(y_zero)
+    if n_zero == 0:
+        ix_greater = np.where(y > 0)[0]
+        ens_sub = ens[ix_greater , ]
+        return ens_tids_lims_rot(ens_sub, y_sub, h, low = 0)
+    elif n_pos == 0:
+        ix_zero = np.where(y == 0)[0]
+        ens_zero = ens[ix_zero , ]
+        return ens_censored_tids_lims_rot(ens_zero, y_zero, h, low = 0)
+    else:
+        ix_greater = np.where(y > 0)[0]
+        ix_zero = np.where(y == 0)[0]
+        ens_sub = ens[ix_greater , ]
+        ens_zero = ens[ix_zero , ]
+        crps_pos = ens_tids_lims_rot(ens_sub, y_sub, h, low = 0)
+        crps_zeros = ens_censored_tids_lims_rot(ens_zero, y_zero, h, low = 0)
+        return (crps_pos*n_pos + crps_zeros*n_zero) / n
+
+def ens_tids_lims_rot(forecast, y, h,  low):
+    mean = [np.unique(forecast[i,]) for i in range(len(y))]
+    len_preds = [len(x) for x in mean]
+    len_cumsum = np.cumsum(len_preds)
+    len_cumsum = np.insert(len_cumsum, 0, 0)
+    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
+    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
+    mean = np.concatenate(mean)
+    yc = y.copy()
+    crps = crps_lims.crps_norm_hvec(yc,mean,weights, len_cumsum, h, low, float('Inf'))
+    return crps
+
+def ens_censored_tids_lims_rot(forecast, y, h, low):
+    mean = [np.unique(forecast[i,]) for i in range(len(y))]
+    len_preds = [len(x) for x in mean]
+    len_cumsum = np.cumsum(len_preds)
+    len_cumsum = np.insert(len_cumsum, 0, 0)
+    ecdfs = [ECDF(forecast[i,])(mean[i]) for i in range(len(y))]
+    weights = np.concatenate([np.diff(np.insert(x, 0, 0)) for x in ecdfs])
+    mean = np.concatenate(mean)
+    yc = y.copy()
+    crps = crps_lims.crps_norm_censored_hvec(yc,mean,weights, len_cumsum, h, low, float('Inf'))
+    return crps

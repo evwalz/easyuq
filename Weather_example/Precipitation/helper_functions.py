@@ -4,6 +4,15 @@ from scipy import stats
 from statsmodels.distributions.empirical_distribution import ECDF
 import properscoring as ps
 
+
+def silver_rot(y):
+    n = y.shape[0]
+    IQR = np.quantile(y, 0.75, axis = 1) - np.quantile(y, 0.25, axis = 1)
+    std_vec = np.std(y, axis = 1, ddof = 1)
+    ix_0 = np.where(IQR == 0)[0]
+    IQR[ix_0] = 1.34*IQR[ix_0]
+    return 0.9*np.minimum(std_vec, IQR / 1.34) * n**(-1/5.)
+
 def algo72_ensemble(fct_train, fct_test, y_train):
     n = len(fct_train)
     m = len(fct_test)
