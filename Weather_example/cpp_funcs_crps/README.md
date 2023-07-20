@@ -2,7 +2,7 @@
 
 1. Create a folder named "thirdparty" 
 
-2. In "thirdparty" there will be two folders, "pybind11" and "boost" which can be downloaded from here and here
+2. In "thirdparty" there will be two folders, "pybind11" and "boost" which can be downloaded from [here](https://github.com/pybind/pybind11) and [here](https://www.boost.org/users/download/)
 
 3. Create a folder "build"
 
