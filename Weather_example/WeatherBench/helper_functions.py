@@ -200,7 +200,7 @@ def optimize_paras_onefit(preds_train, y_train):
 #################################
 
 
-def rot(y):
+def silver_rot(y):
     n = y.shape[0]
     IQR = np.quantile(y, 0.75, axis = 1) - np.quantile(y, 0.25, axis = 1)
     std_vec = np.std(y, axis = 1, ddof = 1)
