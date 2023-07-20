@@ -66,3 +66,123 @@ def crps_cnorm(y, lower, upper):
     out_z = z*(2*stats.norm.cdf(z)-1) + 2*stats.norm.pdf(z)
     out = out_z + out_l1 + out_u1 - b/ np.sqrt(np.pi)
     return out + np.absolute(y - z)
+
+
+def norm_pdf(yval, thresholds, h, df):
+    return stats.norm.pdf((yval - thresholds), scale=h)
+
+
+def t_pdf(yval, thresholds, h, df):
+    return stats.t.pdf((yval - thresholds), df, scale=h)
+
+
+def onefit_h(preds, y, df):
+    if df == None:
+        fun = norm_pdf
+    else:
+        fun = t_pdf
+    bb = np.max(y)
+    
+    def opt_ll(h):
+        out = 0
+        n = len(y)
+        w = 0
+        for i in range(n):
+            yval = y[i]
+            thresholds = preds.predictions[i].points
+            y_help = preds.predictions[i].ecdf
+            weights = np.diff(np.insert(y_help, 0, 0))
+            if len(weights) > 1:
+                arr = np.unique(weights)
+                if arr[0] == 0 and arr[1] == 1:
+                    w = w + 1
+                else:
+                    indx = np.where(thresholds == yval)[0]
+                    weights[indx] = 0
+                    weights = weights / np.sum(weights)
+
+            dis = fun(yval, thresholds, h, df)
+            f = np.sum(weights * dis)
+            if f == 0 and df == None:
+                thresholds_new = np.delete(thresholds, indx)
+                cdf_new = np.cumsum(np.delete(weights, indx))
+                f_log = fdense_update(cdf_new, thresholds_new, yval, h)
+                out = out - f_log
+            else:
+                out = out - np.log(f)
+        return out / n
+    res = minimize_scalar(opt_ll, method='bounded', bounds=(0, bb))
+    return res.x, res.fun
+
+def optimize_paras_onefit(preds_train, y_train):
+    hs, lls = [], []
+    dfs = [None, 20, 10, 5, 4, 3, 2]
+    for df in dfs:
+        h, ll = onefit_h(preds_train, y_train, df)
+        hs += [h]
+        lls += [ll]
+
+    ll_ix = np.nanargmin(lls)
+    ll_min = lls[ll_ix]
+    h_min = hs[ll_ix]
+    df_min = dfs[ll_ix]
+    return ll_min, h_min, df_min
+
+def optim_norm(forecast, y):
+    fun = norm_pdf
+    bb = np.max(y)
+    def opt_ll(h):
+        out = 0
+        n = len(y)
+        for i in range(n):
+            yval = y[i]
+            ens = forecast[i,]
+            dis = fun(yval, ens, h, df=None)
+            f = np.mean(dis)
+            out = out - np.log(f)
+        return out / n
+# boudns = 1e-2
+    res = minimize_scalar(opt_ll, method='bounded', bounds=(1e-10, bb))
+    return res.x, res.fun
+
+def optim_t(forecast, y, df):
+    fun = t_pdf
+    bb = np.max(y)
+    def opt_ll(h):
+        out = 0
+        n = len(y)
+        for i in range(n):
+            yval = y[i]
+            ens = forecast[i,]
+            dis = fun(yval, ens, h, df)
+            f = np.mean(dis)
+            out = out - np.log(f)
+        return out / n
+
+    res = minimize_scalar(opt_ll, method='bounded', bounds=(1e-10, bb))
+    return res.x, res.fun
+
+def optim_ll_dressing(forecast, y):
+    h_norm, crps_norm = optim_norm(forecast, y)
+    h_best = h_norm
+    crps_best = crps_norm
+    h, crps = optim_t(forecast, y, df = 20)
+    dfs = [20, 10, 5, 4, 3, 2]
+    if crps_norm < crps:
+        return h_norm, None
+    k = 0
+    while (crps_best > crps and k < 5):
+        crps_best = crps
+        h_best = h
+        df_best = dfs[k]
+        k = k+1
+        df = dfs[k]
+        h, crps = optim_t(forecast, y, df=df)
+
+    if k == 5:
+        if crps_best < crps:
+            return h_best, 3
+        else:
+            return h, 2
+    else:
+        return h_best, df_best
