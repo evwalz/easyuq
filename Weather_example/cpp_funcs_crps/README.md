@@ -6,7 +6,7 @@
 
 3. Create a folder "build"
 
-4. Navigate into "build" folder and run *Cmake ..
+4. Navigate into "build" folder and run *Cmake ..*
 
 5. Run make
 
