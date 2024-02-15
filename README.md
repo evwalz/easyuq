@@ -11,4 +11,4 @@ CRPS functions available here: https://github.com/evwalz/crpsmixture
 Remaining CRPS functions available [here](./Weather_example/cpp_funcs_crps)
 
 # Reference
-Link to arXiv paper to be added
+https://epubs.siam.org/doi/10.1137/22M1541915
